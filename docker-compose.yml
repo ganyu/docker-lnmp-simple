@@ -1,0 +1,85 @@
+version: "3"
+services:
+  nginx:
+    build:
+      context: ./services/nginx
+      args:
+        NGINX_VERSION: ${NGINX_VERSION}
+    container_name: nginx
+    privileged: true
+    env_file: .env
+    restart: always
+    ports:
+      - "${NGINX_PORT}:80"
+    volumes:
+      - ${LOCAL_DIR_BACKEND}:${WEB_DIR_BACKEND}:rw
+      - ${LOCAL_DIR_ERP}:${WEB_DIR_ERP}:rw
+      - ${NGINX_CONFD_DIR}:/etc/nginx/conf.d/
+      - ${NGINX_CONF_FILE}:/etc/nginx/nginx.conf
+      - ${NGINX_FASTCGI_PARAMS}:/etc/nginx/fastcgi_params
+      - ${LOG_DIR}/nginx:/var/log/nginx/
+      - ${NGINX_MIME}:/etc/nginx/mime.types
+    depends_on:
+      - php-fpm
+    networks:
+      - lnmp-net
+
+  php-fpm:
+    build:
+      context: ./services/php
+      args:
+        PHP_VERSION: ${PHP_VERSION}
+    container_name: php-fpm
+    privileged: true
+    env_file: .env
+    ports:
+      - "${PHP_FPM_PORT}:9000"
+    volumes:
+      - ${LOCAL_DIR_BACKEND}:${WEB_DIR_BACKEND}:rw
+      - ${LOCAL_DIR_ERP}:${WEB_DIR_ERP}:rw
+      - ${PHP_CONF_DIR}:/usr/local/etc/
+      - ${LOG_DIR}/php:/usr/local/var/log
+    restart: always
+    networks:
+      - lnmp-net
+
+  mysql:
+    build:
+      context: ./services/mysql
+      args:
+         MYSQL_VERSION: ${MYSQL_VERSION}
+    container_name: mysql
+    privileged: true
+    env_file: .env
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - ${MYSQL_CONF_FILE}:/etc/mysql/my.cnf
+      - ${LOG_DIR}/mysql/:/var/log/mysql/
+      - ${DATA_DIR}/mysql:/var/lib/mysql/
+    restart: always
+    networks:
+      - lnmp-net
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+
+  node:
+    build:
+      context: ./services/node
+    container_name: node
+    privileged: true
+    env_file: .env
+    ports:
+      - "${NODE_PORT}:${NODE_PORT}"
+    volumes:
+      - ${LOCAL_DIR_BACKEND}:${WEB_DIR_BACKEND}:rw
+      - ${LOCAL_DIR_ERP}:${WEB_DIR_ERP}:rw
+    restart: always
+    tty: true
+    networks:
+      - lnmp-net
+
+networks:
+  lnmp-net:
+    external: true
+
